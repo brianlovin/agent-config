@@ -97,6 +97,15 @@ EOF
     [[ "$output" == *"(local)"* ]]
 }
 
+@test "sync.sh validate checks codex local skills" {
+    create_fake_skill "codex-local-skill" "$FAKE_HOME/.codex/skills"
+
+    run run_sync validate
+    [[ "$status" -eq 0 ]]
+    [[ "$output" == *"codex-local-skill"* ]]
+    [[ "$output" == *"(local)"* ]]
+}
+
 @test "sync.sh validate doesn't double-count synced skills" {
     create_fake_skill "my-skill"
     run_install

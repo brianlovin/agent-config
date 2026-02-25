@@ -4,6 +4,9 @@ set -e
 CONFIG_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$CONFIG_DIR/.backup"
 DRY_RUN=false
+CLAUDE_HOME="$HOME/.claude"
+CODEX_HOME="$HOME/.codex"
+SKILL_DIRS=("$CODEX_HOME/skills" "$CLAUDE_HOME/skills")
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -11,6 +14,29 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
 RESET='\033[0m'
+
+is_repo_symlink() {
+    local path="$1"
+    if [ -L "$path" ] && [[ "$(readlink "$path")" == "$CONFIG_DIR"* ]]; then
+        return 0
+    fi
+    return 1
+}
+
+find_skill_source() {
+    local name="$1"
+    local path=""
+
+    for dir in "${SKILL_DIRS[@]}"; do
+        path="$dir/$name"
+        if [ -d "$path" ] && ! is_repo_symlink "$path"; then
+            echo "$path"
+            return 0
+        fi
+    done
+
+    return 1
+}
 
 # Capitalize first letter (portable alternative to ${var^})
 capitalize() {
@@ -108,9 +134,8 @@ validate_skill() {
 
 # Show status for a directory-based item (skills)
 show_dir_status() {
-    local type="$1"
-    local local_dir="$HOME/.claude/$type"
-    local repo_dir="$CONFIG_DIR/$type"
+    local local_dir="$1"
+    local repo_dir="$2"
 
     for item in "$local_dir"/*/; do
         [ -d "$item" ] || continue
@@ -137,7 +162,7 @@ show_dir_status() {
 # Show status for a file-based item (agents, rules)
 show_file_status() {
     local type="$1"
-    local local_dir="$HOME/.claude/$type"
+    local local_dir="$CLAUDE_HOME/$type"
     local repo_dir="$CONFIG_DIR/$type"
 
     for item in "$local_dir"/*.md; do
@@ -163,20 +188,28 @@ show_file_status() {
 }
 
 show_status() {
-    echo -e "${BOLD}Claude Config Sync Status${RESET}"
+    echo -e "${BOLD}Agent Config Sync Status${RESET}"
     echo "========================="
     echo ""
 
-    echo -e "${BOLD}Skills:${RESET}"
-    if [ -d "$HOME/.claude/skills" ] && [ -n "$(ls -A "$HOME/.claude/skills" 2>/dev/null)" ]; then
-        show_dir_status "skills"
+    echo -e "${BOLD}Skills (~/.claude):${RESET}"
+    if [ -d "$CLAUDE_HOME/skills" ] && [ -n "$(ls -A "$CLAUDE_HOME/skills" 2>/dev/null)" ]; then
+        show_dir_status "$CLAUDE_HOME/skills" "$CONFIG_DIR/skills"
+    else
+        echo "  (none)"
+    fi
+    echo ""
+
+    echo -e "${BOLD}Skills (~/.codex):${RESET}"
+    if [ -d "$CODEX_HOME/skills" ] && [ -n "$(ls -A "$CODEX_HOME/skills" 2>/dev/null)" ]; then
+        show_dir_status "$CODEX_HOME/skills" "$CONFIG_DIR/skills"
     else
         echo "  (none)"
     fi
     echo ""
 
     echo -e "${BOLD}Agents:${RESET}"
-    if [ -d "$HOME/.claude/agents" ] && ls "$HOME/.claude/agents"/*.md &>/dev/null; then
+    if [ -d "$CLAUDE_HOME/agents" ] && ls "$CLAUDE_HOME/agents"/*.md &>/dev/null; then
         show_file_status "agents"
     else
         echo "  (none)"
@@ -184,7 +217,7 @@ show_status() {
     echo ""
 
     echo -e "${BOLD}Rules:${RESET}"
-    if [ -d "$HOME/.claude/rules" ] && ls "$HOME/.claude/rules"/*.md &>/dev/null; then
+    if [ -d "$CLAUDE_HOME/rules" ] && ls "$CLAUDE_HOME/rules"/*.md &>/dev/null; then
         show_file_status "rules"
     else
         echo "  (none)"
@@ -210,16 +243,41 @@ show_status() {
 
 add_skill() {
     local name="$1"
-    local src="$HOME/.claude/skills/$name"
+    local src
     local dest="$CONFIG_DIR/skills/$name"
+    local skill_dir=""
+    local found_any=false
+    local all_synced=true
 
-    if [ ! -d "$src" ]; then
-        echo "Error: Skill not found at $src"
+    for skill_dir in "${SKILL_DIRS[@]}"; do
+        if [ -d "$skill_dir/$name" ]; then
+            found_any=true
+            if ! is_repo_symlink "$skill_dir/$name"; then
+                all_synced=false
+            fi
+        else
+            all_synced=false
+        fi
+    done
+
+    if ! $found_any; then
+        echo "Error: Skill '$name' not found in ~/.claude/skills or ~/.codex/skills"
         exit 1
     fi
 
-    if [ -L "$src" ] && [[ "$(readlink "$src")" == "$CONFIG_DIR"* ]]; then
+    if $all_synced; then
         echo "Error: '$name' is already synced"
+        exit 1
+    fi
+
+    src="$(find_skill_source "$name")" || true
+    if [ -z "$src" ]; then
+        echo "Error: '$name' is already synced"
+        exit 1
+    fi
+
+    if [ -e "$dest" ]; then
+        echo "Error: Skill '$name' already exists in repo at $dest"
         exit 1
     fi
 
@@ -235,7 +293,9 @@ add_skill() {
 
     if $DRY_RUN; then
         echo -e "${BLUE}[dry-run]${RESET} Would copy $src to $dest"
-        echo -e "${BLUE}[dry-run]${RESET} Would create symlink $src -> $dest"
+        for skill_dir in "${SKILL_DIRS[@]}"; do
+            echo -e "${BLUE}[dry-run]${RESET} Would create symlink $skill_dir/$name -> $dest"
+        done
         return
     fi
 
@@ -248,10 +308,18 @@ add_skill() {
 
     mkdir -p "$CONFIG_DIR/skills"
     cp -r "$src" "$dest"
-    rm -rf "$src"
-    ln -s "$dest" "$src"
 
-    echo -e "${GREEN}✓${RESET} Skill '$name' added and symlinked"
+    for skill_dir in "${SKILL_DIRS[@]}"; do
+        local target="$skill_dir/$name"
+        mkdir -p "$skill_dir"
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            backup_item "$target" "$backup_path"
+            rm -rf "$target"
+        fi
+        ln -s "$dest" "$target"
+    done
+
+    echo -e "${GREEN}✓${RESET} Skill '$name' added and symlinked in ~/.claude and ~/.codex"
     echo -e "${BLUE}Backup saved:${RESET} $backup_path"
     echo "  Run: ./sync.sh push"
 }
@@ -259,7 +327,7 @@ add_skill() {
 add_file() {
     local type="$1"
     local name="$2"
-    local src="$HOME/.claude/$type/$name.md"
+    local src="$CLAUDE_HOME/$type/$name.md"
     local dest="$CONFIG_DIR/$type/$name.md"
 
     if [ ! -f "$src" ]; then
@@ -297,7 +365,6 @@ add_file() {
 
 remove_skill() {
     local name="$1"
-    local src="$HOME/.claude/skills/$name"
     local dest="$CONFIG_DIR/skills/$name"
 
     if [ ! -d "$dest" ]; then
@@ -306,8 +373,11 @@ remove_skill() {
     fi
 
     if $DRY_RUN; then
-        echo -e "${BLUE}[dry-run]${RESET} Would remove symlink at $src"
-        echo -e "${BLUE}[dry-run]${RESET} Would copy $dest to $src"
+        local skill_dir=""
+        for skill_dir in "${SKILL_DIRS[@]}"; do
+            echo -e "${BLUE}[dry-run]${RESET} Would remove symlink at $skill_dir/$name"
+            echo -e "${BLUE}[dry-run]${RESET} Would copy $dest to $skill_dir/$name"
+        done
         echo -e "${BLUE}[dry-run]${RESET} Would delete $dest from repo"
         return
     fi
@@ -317,19 +387,27 @@ remove_skill() {
     # Create backup
     local backup_path=$(create_backup)
     backup_item "$dest" "$backup_path"
-    if [ -L "$src" ]; then
-        backup_item "$src" "$backup_path"
-    fi
+    local skill_dir=""
+    for skill_dir in "${SKILL_DIRS[@]}"; do
+        local target="$skill_dir/$name"
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            backup_item "$target" "$backup_path"
+        fi
+    done
     write_manifest "$backup_path" "remove-skill" "$name"
 
-    if [ -L "$src" ] && [[ "$(readlink "$src")" == "$CONFIG_DIR"* ]]; then
-        rm "$src"
-        cp -r "$dest" "$src"
-    fi
+    for skill_dir in "${SKILL_DIRS[@]}"; do
+        local target="$skill_dir/$name"
+        mkdir -p "$skill_dir"
+        if is_repo_symlink "$target"; then
+            rm "$target"
+            cp -r "$dest" "$target"
+        fi
+    done
 
     rm -rf "$dest"
 
-    echo -e "${GREEN}✓${RESET} Skill '$name' removed from repo (kept as local)"
+    echo -e "${GREEN}✓${RESET} Skill '$name' removed from repo (kept local in ~/.claude and ~/.codex)"
     echo -e "${BLUE}Backup saved:${RESET} $backup_path"
     echo "  Run: ./sync.sh push"
 }
@@ -337,7 +415,7 @@ remove_skill() {
 remove_file() {
     local type="$1"
     local name="$2"
-    local src="$HOME/.claude/$type/$name.md"
+    local src="$CLAUDE_HOME/$type/$name.md"
     local dest="$CONFIG_DIR/$type/$name.md"
 
     if [ ! -f "$dest" ]; then
@@ -484,28 +562,33 @@ undo_last() {
     echo ""
     echo "Restoring..."
 
-    # Restore each item in the backup
-    for item in "$backup_path"/.claude/*; do
-        [ -e "$item" ] || continue
-        local item_name=$(basename "$item")
-        local dest="$HOME/.claude/$item_name"
+    # Restore each item in backup roots
+    local backup_root=""
+    for backup_root in "$backup_path/.claude" "$backup_path/.codex"; do
+        [ -d "$backup_root" ] || continue
+        for item in "$backup_root"/*; do
+            [ -e "$item" ] || continue
+            local item_name=$(basename "$item")
+            local root_name=$(basename "$backup_root")
+            local dest="$HOME/$root_name/$item_name"
 
-        if [[ "$item" == *.symlink ]]; then
-            # Restore symlink
-            local target=$(cat "$item")
-            local real_dest="${dest%.symlink}"
-            rm -rf "$real_dest"
-            ln -s "$target" "$real_dest"
-            echo -e "${GREEN}✓${RESET} Restored symlink: $real_dest -> $target"
-        elif [ -d "$item" ]; then
-            rm -rf "$dest"
-            cp -r "$item" "$dest"
-            echo -e "${GREEN}✓${RESET} Restored directory: $dest"
-        else
-            rm -f "$dest"
-            cp "$item" "$dest"
-            echo -e "${GREEN}✓${RESET} Restored file: $dest"
-        fi
+            if [[ "$item" == *.symlink ]]; then
+                # Restore symlink
+                local target=$(cat "$item")
+                local real_dest="${dest%.symlink}"
+                rm -rf "$real_dest"
+                ln -s "$target" "$real_dest"
+                echo -e "${GREEN}✓${RESET} Restored symlink: $real_dest -> $target"
+            elif [ -d "$item" ]; then
+                rm -rf "$dest"
+                cp -r "$item" "$dest"
+                echo -e "${GREEN}✓${RESET} Restored directory: $dest"
+            else
+                rm -f "$dest"
+                cp "$item" "$dest"
+                echo -e "${GREEN}✓${RESET} Restored file: $dest"
+            fi
+        done
     done
 
     # Mark backup as used by renaming
@@ -537,22 +620,25 @@ validate_all_skills() {
         done
     fi
 
-    # Check local-only skills
-    if [ -d "$HOME/.claude/skills" ]; then
-        for skill in "$HOME/.claude/skills"/*/; do
+    # Check local-only skills in both Claude and Codex directories
+    local skill_dir=""
+    for skill_dir in "$CLAUDE_HOME/skills" "$CODEX_HOME/skills"; do
+        [ -d "$skill_dir" ] || continue
+        for skill in "$skill_dir"/*/; do
             [ -d "$skill" ] || continue
+            local skill_path="${skill%/}"
             # Skip if it's a symlink to our repo (already checked)
-            if [ -L "$skill" ] && [[ "$(readlink "$skill")" == "$CONFIG_DIR"* ]]; then
+            if is_repo_symlink "$skill_path"; then
                 continue
             fi
             ((checked++)) || true
-            if ! validate_skill "$skill"; then
+            if ! validate_skill "$skill_path"; then
                 has_errors=true
             else
-                echo -e "${GREEN}✓${RESET} $(basename "$skill") (local)"
+                echo -e "${GREEN}✓${RESET} $(basename "$skill_path") (local)"
             fi
         done
-    fi
+    done
 
     echo ""
     if [ $checked -eq 0 ]; then

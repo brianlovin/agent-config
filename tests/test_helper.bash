@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test helper for claude-config tests
+# Test helper for agent-config tests
 # Provides setup/teardown and utility functions
 
 # Get the directory containing the test files
@@ -14,6 +14,7 @@ setup_test_env() {
     export FAKE_REPO="$TEST_TMP/repo"
 
     mkdir -p "$FAKE_HOME/.claude"
+    mkdir -p "$FAKE_HOME/.codex"
     mkdir -p "$FAKE_REPO"
 
     # Copy scripts to fake repo

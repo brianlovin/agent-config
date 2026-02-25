@@ -37,6 +37,7 @@ teardown() {
     create_fake_skill "test-skill"
     run_install
     assert_symlink "$FAKE_HOME/.claude/skills/test-skill" "$FAKE_REPO/skills/test-skill"
+    assert_symlink "$FAKE_HOME/.codex/skills/test-skill" "$FAKE_REPO/skills/test-skill"
 }
 
 @test "install.sh symlinks multiple skills" {
@@ -47,6 +48,9 @@ teardown() {
     assert_symlink "$FAKE_HOME/.claude/skills/skill-one" "$FAKE_REPO/skills/skill-one"
     assert_symlink "$FAKE_HOME/.claude/skills/skill-two" "$FAKE_REPO/skills/skill-two"
     assert_symlink "$FAKE_HOME/.claude/skills/skill-three" "$FAKE_REPO/skills/skill-three"
+    assert_symlink "$FAKE_HOME/.codex/skills/skill-one" "$FAKE_REPO/skills/skill-one"
+    assert_symlink "$FAKE_HOME/.codex/skills/skill-two" "$FAKE_REPO/skills/skill-two"
+    assert_symlink "$FAKE_HOME/.codex/skills/skill-three" "$FAKE_REPO/skills/skill-three"
 }
 
 @test "install.sh symlinks agents" {
@@ -71,6 +75,7 @@ teardown() {
     run_install --dry-run
     [[ ! -L "$FAKE_HOME/.claude/settings.json" ]]
     [[ ! -L "$FAKE_HOME/.claude/skills/test-skill" ]]
+    [[ ! -L "$FAKE_HOME/.codex/skills/test-skill" ]]
 }
 
 @test "install.sh --dry-run shows what would be done" {
@@ -194,6 +199,7 @@ teardown() {
 
     assert_symlink "$FAKE_HOME/.claude/settings.json" "$FAKE_REPO/settings.json"
     assert_symlink "$FAKE_HOME/.claude/skills/test-skill" "$FAKE_REPO/skills/test-skill"
+    assert_symlink "$FAKE_HOME/.codex/skills/test-skill" "$FAKE_REPO/skills/test-skill"
 }
 
 @test "install.sh preserves local-only items" {

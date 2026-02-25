@@ -17,7 +17,8 @@ teardown() {
 
 @test "sync.sh shows status by default" {
     run run_sync
-    [[ "$output" == *"Claude Config Sync Status"* ]]
+    [[ "$output" == *"Agent Config Sync Status"* ]]
+    [[ "$output" == *"Skills (~/.codex):"* ]]
     [[ "$output" == *"Legend:"* ]]
 }
 
@@ -65,6 +66,7 @@ teardown() {
 
     # Local should be symlink to repo
     assert_symlink "$FAKE_HOME/.claude/skills/my-skill" "$FAKE_REPO/skills/my-skill"
+    assert_symlink "$FAKE_HOME/.codex/skills/my-skill" "$FAKE_REPO/skills/my-skill"
 }
 
 @test "sync.sh add skill creates backup" {
@@ -142,6 +144,7 @@ teardown() {
 
     # Verify it's synced
     assert_symlink "$FAKE_HOME/.claude/skills/my-skill" "$FAKE_REPO/skills/my-skill"
+    assert_symlink "$FAKE_HOME/.codex/skills/my-skill" "$FAKE_REPO/skills/my-skill"
 
     run_sync remove skill my-skill
 
@@ -150,7 +153,9 @@ teardown() {
 
     # Should exist locally as regular directory
     assert_dir "$FAKE_HOME/.claude/skills/my-skill"
+    assert_dir "$FAKE_HOME/.codex/skills/my-skill"
     [[ ! -L "$FAKE_HOME/.claude/skills/my-skill" ]]
+    [[ ! -L "$FAKE_HOME/.codex/skills/my-skill" ]]
 }
 
 @test "sync.sh remove skill creates backup" {

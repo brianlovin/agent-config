@@ -1,12 +1,12 @@
-# claude-config
+# agent-config
 
-My [Claude Code](https://docs.anthropic.com/en/docs/claude-code) configuration - settings and skills.
+My agent configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and Codex.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/brianlovin/claude-config.git
-cd claude-config
+git clone https://github.com/brianlovin/agent-config.git
+cd agent-config
 ./install.sh
 ```
 
@@ -17,7 +17,7 @@ cd claude-config
 - `statusline.sh` - Custom statusline showing token usage
 
 ### Skills
-Reusable capabilities that Claude can invoke (use `/skill-name` in Claude):
+Reusable capabilities that your coding agents can invoke.
 
 | Skill | Description |
 |-------|-------------|
@@ -88,19 +88,21 @@ bats tests/validation.bats
 ```
 
 Tests run in isolated temp directories and don't affect your actual `~/.claude` config.
+Tests also cover Codex skills syncing in `~/.codex/skills`.
 
 ## Local-only config
 
 Not everything needs to be synced. The install script only creates symlinks for what's in this repo - it won't delete your local-only skills.
 
 Machine-specific permissions accumulate in `~/.claude/settings.local.json` (auto-created by Claude, not synced).
+Codex skills are also linked from this repo into `~/.codex/skills`.
 
 ## Creating your own
 
 Fork this repo and customize! The structure is simple:
 
 ```
-claude-config/
+agent-config/
 ├── settings.json      # Claude Code settings
 ├── statusline.sh      # Optional statusline script
 ├── skills/            # Skills (subdirectories with SKILL.md)

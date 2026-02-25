@@ -5,6 +5,8 @@ CONFIG_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="$CONFIG_DIR/.backup"
 DRY_RUN=false
 FORCE=false
+CLAUDE_HOME="$HOME/.claude"
+CODEX_HOME="$HOME/.codex"
 
 # Colors
 GREEN='\033[0;32m'
@@ -160,11 +162,13 @@ dry_run_msg() {
 
 # Main installation
 main() {
+    local skill_targets=("$CLAUDE_HOME/skills" "$CODEX_HOME/skills")
+
     if $DRY_RUN; then
         echo -e "${BOLD}Dry run - showing what would be done:${RESET}"
         echo ""
     else
-        echo "Installing Claude Code config from $CONFIG_DIR"
+        echo "Installing agent config from $CONFIG_DIR"
         echo ""
     fi
 
@@ -173,31 +177,31 @@ main() {
     local has_changes=false
 
     if ! $DRY_RUN; then
-        mkdir -p ~/.claude
+        mkdir -p "$CLAUDE_HOME" "$CODEX_HOME"
     fi
 
     # Settings
     if [ -f "$CONFIG_DIR/settings.json" ]; then
         if $DRY_RUN; then
-            if has_conflict ~/.claude/settings.json; then
-                dry_run_msg "Would backup and replace ~/.claude/settings.json"
+            if has_conflict "$CLAUDE_HOME/settings.json"; then
+                dry_run_msg "Would backup and replace $CLAUDE_HOME/settings.json"
             else
                 dry_run_msg "Would link settings.json"
             fi
         else
-            if has_conflict ~/.claude/settings.json; then
+            if has_conflict "$CLAUDE_HOME/settings.json"; then
                 [ -z "$backup_path" ] && backup_path=$(create_backup)
-                if handle_conflict "$CONFIG_DIR/settings.json" ~/.claude/settings.json "$backup_path" "settings.json"; then
+                if handle_conflict "$CONFIG_DIR/settings.json" "$CLAUDE_HOME/settings.json" "$backup_path" "settings.json"; then
                     backed_up_items+=("settings.json")
-                    rm -rf ~/.claude/settings.json
-                    ln -sf "$CONFIG_DIR/settings.json" ~/.claude/settings.json
+                    rm -rf "$CLAUDE_HOME/settings.json"
+                    ln -sf "$CONFIG_DIR/settings.json" "$CLAUDE_HOME/settings.json"
                     echo -e "${GREEN}✓${RESET} settings.json (replaced, backup saved)"
                     has_changes=true
                 else
                     echo -e "${YELLOW}○${RESET} settings.json (kept local)"
                 fi
             else
-                ln -sf "$CONFIG_DIR/settings.json" ~/.claude/settings.json
+                ln -sf "$CONFIG_DIR/settings.json" "$CLAUDE_HOME/settings.json"
                 echo -e "${GREEN}✓${RESET} settings.json"
                 has_changes=true
             fi
@@ -207,25 +211,25 @@ main() {
     # Statusline
     if [ -f "$CONFIG_DIR/statusline.sh" ]; then
         if $DRY_RUN; then
-            if has_conflict ~/.claude/statusline.sh; then
-                dry_run_msg "Would backup and replace ~/.claude/statusline.sh"
+            if has_conflict "$CLAUDE_HOME/statusline.sh"; then
+                dry_run_msg "Would backup and replace $CLAUDE_HOME/statusline.sh"
             else
                 dry_run_msg "Would link statusline.sh"
             fi
         else
-            if has_conflict ~/.claude/statusline.sh; then
+            if has_conflict "$CLAUDE_HOME/statusline.sh"; then
                 [ -z "$backup_path" ] && backup_path=$(create_backup)
-                if handle_conflict "$CONFIG_DIR/statusline.sh" ~/.claude/statusline.sh "$backup_path" "statusline.sh"; then
+                if handle_conflict "$CONFIG_DIR/statusline.sh" "$CLAUDE_HOME/statusline.sh" "$backup_path" "statusline.sh"; then
                     backed_up_items+=("statusline.sh")
-                    rm -rf ~/.claude/statusline.sh
-                    ln -sf "$CONFIG_DIR/statusline.sh" ~/.claude/statusline.sh
+                    rm -rf "$CLAUDE_HOME/statusline.sh"
+                    ln -sf "$CONFIG_DIR/statusline.sh" "$CLAUDE_HOME/statusline.sh"
                     echo -e "${GREEN}✓${RESET} statusline.sh (replaced, backup saved)"
                     has_changes=true
                 else
                     echo -e "${YELLOW}○${RESET} statusline.sh (kept local)"
                 fi
             else
-                ln -sf "$CONFIG_DIR/statusline.sh" ~/.claude/statusline.sh
+                ln -sf "$CONFIG_DIR/statusline.sh" "$CLAUDE_HOME/statusline.sh"
                 echo -e "${GREEN}✓${RESET} statusline.sh"
                 has_changes=true
             fi
@@ -234,46 +238,52 @@ main() {
 
     # Skills (directory symlinks per skill)
     if [ -d "$CONFIG_DIR/skills" ] && [ -n "$(ls -A "$CONFIG_DIR/skills" 2>/dev/null)" ]; then
-        mkdir -p ~/.claude/skills
+        if ! $DRY_RUN; then
+            for target in "${skill_targets[@]}"; do
+                mkdir -p "$target"
+            done
+        fi
         for skill in "$CONFIG_DIR/skills"/*/; do
             [ -d "$skill" ] || continue
             skill_name=$(basename "$skill")
-            local dest=~/.claude/skills/"$skill_name"
+            for target in "${skill_targets[@]}"; do
+                local dest="$target/$skill_name"
 
-            if $DRY_RUN; then
-                if has_conflict "$dest"; then
-                    dry_run_msg "Would backup and replace skills/$skill_name"
-                else
-                    dry_run_msg "Would link skills/$skill_name"
-                fi
-            else
-                if has_conflict "$dest"; then
-                    [ -z "$backup_path" ] && backup_path=$(create_backup)
-                    if handle_conflict "$skill" "$dest" "$backup_path" "skills/$skill_name"; then
-                        backed_up_items+=("skills/$skill_name")
-                        rm -rf "$dest"
-                        ln -sfn "$skill" "$dest"
-                        echo -e "${GREEN}✓${RESET} skills/$skill_name (replaced, backup saved)"
-                        has_changes=true
+                if $DRY_RUN; then
+                    if has_conflict "$dest"; then
+                        dry_run_msg "Would backup and replace $dest"
                     else
-                        echo -e "${YELLOW}○${RESET} skills/$skill_name (kept local)"
+                        dry_run_msg "Would link $dest"
                     fi
                 else
-                    ln -sfn "$skill" "$dest"
-                    echo -e "${GREEN}✓${RESET} skills/$skill_name"
-                    has_changes=true
+                    if has_conflict "$dest"; then
+                        [ -z "$backup_path" ] && backup_path=$(create_backup)
+                        if handle_conflict "$skill" "$dest" "$backup_path" "$dest"; then
+                            backed_up_items+=("${dest#$HOME/}")
+                            rm -rf "$dest"
+                            ln -sfn "$skill" "$dest"
+                            echo -e "${GREEN}✓${RESET} $dest (replaced, backup saved)"
+                            has_changes=true
+                        else
+                            echo -e "${YELLOW}○${RESET} $dest (kept local)"
+                        fi
+                    else
+                        ln -sfn "$skill" "$dest"
+                        echo -e "${GREEN}✓${RESET} $dest"
+                        has_changes=true
+                    fi
                 fi
-            fi
+            done
         done
     fi
 
     # Agents (file symlinks per agent)
     if [ -d "$CONFIG_DIR/agents" ] && ls "$CONFIG_DIR/agents"/*.md &>/dev/null; then
-        mkdir -p ~/.claude/agents
+        mkdir -p "$CLAUDE_HOME/agents"
         for agent in "$CONFIG_DIR/agents"/*.md; do
             [ -f "$agent" ] || continue
             agent_name=$(basename "$agent")
-            local dest=~/.claude/agents/"$agent_name"
+            local dest="$CLAUDE_HOME/agents/$agent_name"
 
             if $DRY_RUN; then
                 if has_conflict "$dest"; then
@@ -304,11 +314,11 @@ main() {
 
     # Rules (file symlinks per rule)
     if [ -d "$CONFIG_DIR/rules" ] && ls "$CONFIG_DIR/rules"/*.md &>/dev/null; then
-        mkdir -p ~/.claude/rules
+        mkdir -p "$CLAUDE_HOME/rules"
         for rule in "$CONFIG_DIR/rules"/*.md; do
             [ -f "$rule" ] || continue
             rule_name=$(basename "$rule")
-            local dest=~/.claude/rules/"$rule_name"
+            local dest="$CLAUDE_HOME/rules/$rule_name"
 
             if $DRY_RUN; then
                 if has_conflict "$dest"; then
@@ -349,9 +359,9 @@ main() {
             echo ""
         fi
 
-        echo "Done! Claude Code config installed."
+        echo "Done! Agent config installed."
         echo ""
-        echo "Local-only items in ~/.claude/ are preserved."
+        echo "Local-only items in ~/.claude/ and ~/.codex/ are preserved."
         echo "Use ./sync.sh to manage what gets shared."
     fi
 }

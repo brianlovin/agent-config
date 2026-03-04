@@ -1,12 +1,12 @@
-# agent-config
+# claude-config
 
-My agent configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and Codex.
+My agent configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and Codex, synced across machines via symlinks.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/brianlovin/agent-config.git
-cd agent-config
+git clone https://github.com/andrewwashuta/claude-config.git
+cd claude-config
 ./install.sh
 ```
 
@@ -22,12 +22,27 @@ Reusable capabilities that your coding agents can invoke.
 | Skill | Description |
 |-------|-------------|
 | `agent-browser` | Browser automation for web testing and interaction |
-| `favicon` | Generate favicons from a source image |
-| `knip` | Find and remove unused files, dependencies, and exports |
-| `rams` | Run accessibility and visual design review |
-| `reclaude` | Refactor CLAUDE.md files for progressive disclosure |
-| `simplify` | Code simplification specialist |
+| `ai-elements` | Intelligent documentation for the AI Elements component library |
+| `bun` | Use Bun instead of Node.js/npm/pnpm/vite |
+| `chrome-webstore-release-blueprint` | Chrome Web Store API release automation |
 | `deslop` | Remove AI-generated code slop |
+| `favicon` | Generate favicons from a source image |
+| `find-skills` | Discover and install agent skills |
+| `fix-sentry-issues` | Triage and fix production issues via Sentry MCP |
+| `knip` | Find and remove unused files, dependencies, and exports |
+| `playwriter` | Control Chrome tabs via Playwriter CLI |
+| `rams` | Accessibility and visual design review |
+| `react-doctor` | Diagnose and fix React codebase health issues |
+| `recall` | Persistent memory across conversations |
+| `reclaude` | Refactor CLAUDE.md for progressive disclosure |
+| `sentry` | Sentry error monitoring patterns for Next.js |
+| `simplify` | Code simplification specialist |
+| `skill-creator` | Guide for creating effective skills |
+| `tdd` | Test-driven development with red-green-refactor |
+| `workflow` | Workflow orchestration for complex coding tasks |
+
+### Agents
+- `security-reviewer` - Security review subagent
 
 ## Managing your config
 
@@ -88,30 +103,19 @@ bats tests/validation.bats
 ```
 
 Tests run in isolated temp directories and don't affect your actual `~/.claude` config.
-Tests also cover Codex skills syncing in `~/.codex/skills`.
 
-## Local-only config
-
-Not everything needs to be synced. The install script only creates symlinks for what's in this repo - it won't delete your local-only skills.
-
-Machine-specific permissions accumulate in `~/.claude/settings.local.json` (auto-created by Claude, not synced).
-Codex skills are also linked from this repo into `~/.codex/skills`.
-
-## Creating your own
-
-Fork this repo and customize! The structure is simple:
+## Directory structure
 
 ```
-agent-config/
+claude-config/
 ├── settings.json      # Claude Code settings
 ├── statusline.sh      # Optional statusline script
 ├── skills/            # Skills (subdirectories with SKILL.md)
 ├── agents/            # Subagent definitions
-├── rules/             # Rule files
-└── tests/             # Bats tests
+├── tests/             # Bats tests
+└── install.sh         # Symlink installer
 ```
 
 ## See also
 
 - [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code)
-- [My dotfiles](https://github.com/brianlovin/dotfiles) - Shell, git, SSH config

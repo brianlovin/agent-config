@@ -1,9 +1,9 @@
 ---
 name: simplify
 description: >
-  Simplify recently modified code by renaming variables for clarity, extracting repeated logic
-  into functions, flattening nested conditionals, and removing redundant abstractions. Use when
-  asked to clean up, refactor, polish, tidy, or make code more readable after writing it.
+  Simplifies recently modified code by renaming variables for clarity, extracting repeated logic
+  into functions, flattening nested conditionals, and removing redundant abstractions. Activates
+  when the user asks to clean up, refactor, polish, tidy, or make code more readable after writing it.
 version: 1.0.1
 license: MIT
 ---
@@ -22,39 +22,11 @@ Consult these resources as needed:
 4. Run existing tests to verify functionality is unchanged before committing refinements
 5. Summarize what changed and why in the commit or response
 
-## Example: Flatten Nested Conditionals
+## Quick Example
 
-Before:
+`if (a) { if (b) { if (c) { do() } } }` → early-return guards: `if (!a) return; if (!b) return; if (!c) return; do()`
 
-```ts
-function processOrder(order: Order): Result {
-  if (order) {
-    if (order.items.length > 0) {
-      if (order.status === "pending") {
-        return submitOrder(order);
-      } else {
-        return { error: "Order already processed" };
-      }
-    } else {
-      return { error: "No items" };
-    }
-  } else {
-    return { error: "No order" };
-  }
-}
-```
-
-After:
-
-```ts
-function processOrder(order: Order): Result {
-  if (!order) return { error: "No order" };
-  if (order.items.length === 0) return { error: "No items" };
-  if (order.status !== "pending") return { error: "Order already processed" };
-
-  return submitOrder(order);
-}
-```
+See ./references/transformation-patterns.md for full before/after examples.
 
 ## Principles
 

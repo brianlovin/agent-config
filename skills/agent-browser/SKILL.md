@@ -185,6 +185,14 @@ agent-browser dialog dismiss        # Dismiss dialog
 agent-browser eval "document.title"   # Run JavaScript
 ```
 
+## Error handling
+
+- **Element not found / stale ref**: Re-snapshot with `agent-browser snapshot -i` to get fresh refs, then retry.
+- **Timeout waiting for element**: Use `agent-browser wait 2000` to pause, then re-snapshot. Check `agent-browser errors` for page errors.
+- **Command fails after navigation**: DOM may have changed — always re-snapshot after page transitions or significant DOM updates.
+- **Unexpected dialog blocking interaction**: Use `agent-browser dialog accept` or `agent-browser dialog dismiss` to clear it, then continue.
+- **Element not interactable**: Try `agent-browser scrollintoview @e1` first, then retry the interaction.
+
 ## Example: Form submission
 
 ```bash
@@ -197,6 +205,10 @@ agent-browser fill @e2 "password123"
 agent-browser click @e3
 agent-browser wait --load networkidle
 agent-browser snapshot -i  # Check result
+
+# Verify success: check for a success message or URL change
+agent-browser get url      # Confirm redirect, e.g. to /confirmation
+agent-browser wait --text "Thank you"  # Or wait for a known success string
 ```
 
 ## Example: Authentication with saved state
@@ -235,11 +247,6 @@ agent-browser get text @e1 --json
 ## Debugging
 
 ```bash
-agent-browser open example.com --headed              # Show browser window
-agent-browser console                                # View console messages
-agent-browser errors                                 # View page errors
-agent-browser record start ./debug.webm   # Record from current page
-agent-browser record stop                            # Save recording
 agent-browser open example.com --headed  # Show browser window
 agent-browser --cdp 9222 snapshot        # Connect via CDP
 agent-browser console                    # View console messages
@@ -247,6 +254,8 @@ agent-browser console --clear            # Clear console
 agent-browser errors                     # View page errors
 agent-browser errors --clear             # Clear errors
 agent-browser highlight @e1              # Highlight element
+agent-browser record start ./debug.webm  # Record from current page
+agent-browser record stop                # Save recording
 agent-browser trace start                # Start recording trace
 agent-browser trace stop trace.zip       # Stop and save trace
 ```

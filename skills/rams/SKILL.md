@@ -1,6 +1,6 @@
 ---
 name: rams
-description: Run accessibility and visual design review on components. Use when reviewing UI code for WCAG compliance and design issues.
+description: Run accessibility and visual design review on components, checking color contrast ratios, verifying ARIA labels, auditing keyboard navigation, and reviewing focus states. Use when reviewing UI code for WCAG compliance, a11y issues, ADA compliance, screen reader support, contrast ratio problems, keyboard accessible interactions, or general design issues.
 ---
 
 # Rams Design Review
@@ -95,11 +95,11 @@ Score: XX/100
 
 ---
 
-## Guidelines
+## Workflow
 
-1. Read the file(s) first before making assessments
-2. Be specific with line numbers and code snippets
-3. Provide fixes, not just problems
-4. Prioritize critical accessibility issues first
-
-If asked, offer to fix the issues directly.
+1. **Read** — Read the file(s) in full before making any assessments.
+2. **Identify** — Audit for all accessibility and visual design issues across severity tiers.
+3. **Report** — Output findings using the format above, with specific line numbers, code snippets, and fixes. Prioritize critical accessibility issues first.
+4. **Fix** *(if asked)* — Apply fixes directly to the file(s).
+5. **Re-review** — After applying fixes, re-read the file and re-run all checks to confirm every issue is resolved.
+6. **Confirm** — Report that no regressions or new issues were introduced before closing the review.

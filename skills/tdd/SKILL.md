@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, or asks for test-first development.
+description: "Test-driven development with red-green-refactor loop: write failing tests first, implement minimal passing code, then refactor for quality. Use when user wants to build features or fix bugs using TDD, mentions \"red-green-refactor\", wants integration tests, or asks for test-first development."
 ---
 
 # Test-Driven Development
@@ -9,24 +9,38 @@ description: Test-driven development with red-green-refactor loop. Use when user
 
 **Core principle**: Tests should verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
 
-**Good tests** are integration-style: they exercise real code paths through public APIs. They describe _what_ the system does, not _how_ it does it. A good test reads like a specification - "user can checkout with valid cart" tells you exactly what capability exists. These tests survive refactors because they don't care about internal structure.
+**Good tests** are integration-style: they exercise real code paths through public APIs and describe _what_ the system does, not _how_. A good test reads like a specification — "user can checkout with valid cart."
 
-**Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface). The warning sign: your test breaks when you refactor, but behavior hasn't changed. If you rename an internal function and tests fail, those tests were testing implementation, not behavior.
+**Rules**:
+- Use public interfaces only — never test private methods or internal collaborators
+- If a test breaks during a refactor where behavior hasn't changed, the test is testing implementation, not behavior
 
 See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking guidelines.
 
+## Behavior-Focused vs. Implementation-Focused Tests
+
+A quick illustration of the distinction (Python, but the principle is language-agnostic):
+
+```python
+# BAD — tests implementation detail (internal method name, internal state)
+def test_cart_internal():
+    cart = Cart()
+    cart._item_list.append(Item("book", 10))   # reaches into internals
+    assert cart._calculate_subtotal() == 10    # calls private method
+
+# GOOD — tests observable behavior through public interface
+def test_cart_total_reflects_added_items():
+    cart = Cart()
+    cart.add_item("book", price=10)
+    cart.add_item("pen",  price=2)
+    assert cart.total() == 12
+```
+
+The good test survives any internal refactor as long as `add_item` and `total` keep their contract.
+
 ## Anti-Pattern: Horizontal Slices
 
-**DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
-
-This produces **crap tests**:
-
-- Tests written in bulk test _imagined_ behavior, not _actual_ behavior
-- You end up testing the _shape_ of things (data structures, function signatures) rather than user-facing behavior
-- Tests become insensitive to real changes - they pass when behavior breaks, fail when behavior is fine
-- You outrun your headlights, committing to test structure before understanding the implementation
-
-**Correct approach**: Vertical slices via tracer bullets. One test → one implementation → repeat. Each test responds to what you learned from the previous cycle. Because you just wrote the code, you know exactly what behavior matters and how to verify it.
+**DO NOT write all tests first, then all implementation.** Tests written in bulk test _imagined_ behavior and become insensitive to real changes.
 
 ```
 WRONG (horizontal):
@@ -39,6 +53,8 @@ RIGHT (vertical):
   RED→GREEN: test3→impl3
   ...
 ```
+
+**Correct approach**: Vertical slices via tracer bullets — one test → one implementation → repeat.
 
 ## Workflow
 
@@ -67,6 +83,34 @@ GREEN: Write minimal code to pass → test passes
 ```
 
 This is your tracer bullet - proves the path works end-to-end.
+
+**Example RED→GREEN cycle** (pytest):
+
+```python
+# --- RED: write the test first, run it, watch it fail ---
+def test_user_can_register_with_valid_email():
+    service = UserService()
+    user = service.register(email="alice@example.com", password="s3cret")
+    assert user.id is not None
+    assert user.email == "alice@example.com"
+
+# Running now → NameError / AttributeError: UserService does not exist  ✗
+
+# --- GREEN: write the minimal implementation to make it pass ---
+import uuid
+
+class UserService:
+    def register(self, email: str, password: str):
+        return User(id=uuid.uuid4(), email=email)
+
+class User:
+    def __init__(self, id, email):
+        self.id = id
+        self.email = email
+
+# Running now → passes  ✓
+# (password hashing, persistence, validation come in later cycles)
+```
 
 ### 3. Incremental Loop
 

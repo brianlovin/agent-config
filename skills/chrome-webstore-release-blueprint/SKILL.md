@@ -5,22 +5,7 @@ description: Guide a user end-to-end through setting up Chrome Web Store API rel
 
 # Chrome Web Store Release Blueprint
 
-Use this skill as a hands-on setup guide. The agent should lead the user step-by-step, ask for confirmations, and only automate the parts that can be done locally/in CI.
-
-## What This Skill Is For
-
-- Helping a user set up Chrome Web Store release automation from scratch.
-- Giving clear manual instructions for Google/CWS dashboard steps.
-- Implementing repo-side scripts/workflows after the user provides credentials.
-- Verifying submission state (`PUBLISHED`, `PENDING_REVIEW`, etc.).
-
-## Agent Behavior Rules
-
-- Treat dashboard/OAuth tasks as user-driven; do not imply you performed them.
-- Give one clear step at a time and wait for confirmation before moving on.
-- Ask for exact values only when needed, and tell user where each value comes from.
-- Mask secrets in logs and never commit secret values to git.
-- If `gh` is available, offer secret upload automation; if not, provide manual fallback.
+Use this skill as a hands-on setup guide. Lead the user step-by-step, treating all Google/OAuth dashboard tasks as user-driven, giving one clear step at a time and waiting for confirmation before moving on. Ask for exact values only when needed and tell the user where each value comes from. Mask secrets in logs, never commit secret values to git, and prefer repeatable helper scripts over ad-hoc commands. If `gh` is available, offer secret upload automation; if not, provide a manual fallback.
 
 ## Step 1: Project Discovery (Before Any Credential Work)
 
@@ -41,81 +26,50 @@ Ask explicitly:
 
 ### 2.1 Enable API in Google Cloud
 
-Tell user to open:
-- `https://console.cloud.google.com/apis/library/chromewebstore.googleapis.com`
+Open: `https://console.cloud.google.com/apis/library/chromewebstore.googleapis.com`
 
-User actions:
-1. Select the intended Google Cloud project.
-2. Click `Enable` for Chrome Web Store API.
-
-Agent prompt example:
-- "When Chrome Web Store API shows as Enabled, tell me and I will move to OAuth setup."
+- [ ] Select the intended Google Cloud project
+- [ ] Click `Enable` for Chrome Web Store API
+- [ ] Confirm "Enabled" status before continuing
 
 ### 2.2 Configure OAuth Consent Screen
 
-Tell user to open one of:
-- `https://console.cloud.google.com/apis/credentials/consent`
-- If UI redirects, continue in Google Auth Platform consent screen pages.
+Open: `https://console.cloud.google.com/apis/credentials/consent`
+(If UI redirects, continue in Google Auth Platform consent screen pages.)
 
-User actions:
-1. Choose `External` user type (for non-Workspace internal apps).
-2. Fill app name, support email, developer contact email.
-3. Save and continue through scopes unless custom scopes are required.
-4. Add your own Google account as a test user if app is in Testing mode.
-5. Save.
+- [ ] Choose `External` user type
+- [ ] Fill app name, support email, developer contact email; save and continue through scopes
+- [ ] Add your own Google account as a test user if app is in Testing mode
 
-Agent guidance:
-- If user wants stable long-lived refresh token behavior, recommend moving consent screen to Production when ready.
+> For stable long-lived refresh token behavior, recommend moving consent screen to Production when ready.
 
 ### 2.3 Create OAuth Client
 
-Tell user to open:
-- `https://console.cloud.google.com/apis/credentials`
+Open: `https://console.cloud.google.com/apis/credentials`
 
-User actions:
-1. Click `Create Credentials` -> `OAuth client ID`.
-2. Choose application type `Web application`.
-3. Add authorized redirect URI exactly:
-- `https://developers.google.com/oauthplayground`
-4. Create client.
+- [ ] Click `Create Credentials` → `OAuth client ID` → application type `Web application`
+- [ ] Add authorized redirect URI exactly: `https://developers.google.com/oauthplayground`
+- [ ] Save both values as `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET`
 
-Capture values:
-- `CWS_CLIENT_ID`
-- `CWS_CLIENT_SECRET`
-
-Agent prompt example:
-- "Paste `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET` when ready (I will treat them as secrets)."
+Prompt: "Paste `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET` when ready (I will treat them as secrets)."
 
 ### 2.4 Generate Refresh Token (OAuth Playground)
 
-Tell user to open:
-- `https://developers.google.com/oauthplayground/`
+Open: `https://developers.google.com/oauthplayground/`
 
-User actions:
-1. Click the settings gear icon.
-2. Enable `Use your own OAuth credentials`.
-3. Paste `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET`.
-4. In Step 1, enter scope:
-- `https://www.googleapis.com/auth/chromewebstore`
-5. Click `Authorize APIs`.
-6. Sign in with the same Google account that owns/publishes the extension.
-7. Click `Exchange authorization code for tokens`.
-8. Copy refresh token.
+- [ ] Click the settings gear icon → enable `Use your own OAuth credentials` → paste `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET`
+- [ ] In Step 1, enter scope: `https://www.googleapis.com/auth/chromewebstore` → click `Authorize APIs`
+- [ ] Sign in with the account that owns/publishes the extension
+- [ ] Click `Exchange authorization code for tokens` → copy the refresh token as `CWS_REFRESH_TOKEN`
 
-Capture value:
-- `CWS_REFRESH_TOKEN`
-
-Agent prompt example:
-- "Paste `CWS_REFRESH_TOKEN` now. I will only place it in local secret storage/CI secrets."
+Prompt: "Paste `CWS_REFRESH_TOKEN` now. I will only place it in local secret storage/CI secrets."
 
 ### 2.5 Capture Store IDs
 
-Capture:
-- `CWS_EXTENSION_ID` (the extension item ID from store/developer listing URL)
-- `CWS_PUBLISHER_ID` (developer/publisher ID from Chrome Web Store developer account context)
+- `CWS_EXTENSION_ID` — item ID from the store/developer listing URL
+- `CWS_PUBLISHER_ID` — developer/publisher ID from Chrome Web Store Developer Dashboard
 
-Agent instruction:
-- If user is unsure, ask them to open the Chrome Web Store Developer Dashboard and copy IDs from item/account URLs or account details.
+If user is unsure, ask them to open the Developer Dashboard and copy IDs from item/account URLs or account details.
 
 ### 2.6 Credential Checklist
 
@@ -138,7 +92,7 @@ CWS_PUBLISHER_ID=
 CWS_EXTENSION_ID=
 ```
 
-Ensure real secret file path is gitignored.
+Ensure the real secret file path is gitignored.
 
 If using GitHub Actions, ask user if `gh` automation is desired.
 
@@ -149,70 +103,205 @@ gh --version
 gh auth status
 ```
 
-If `gh` auth is missing, tell user to run:
-- `gh auth login`
+If `gh` auth is missing, tell user to run `gh auth login`.
 
-Then implement a helper script that:
-- reads secret values from local env file
-- validates all required keys are present
-- supports `--dry-run`
-- masks values in dry-run output
-- uploads with `gh secret set ... --repo ...`
-- fails fast on missing keys/auth
+Implement the secret upload helper as `scripts/upload-secrets.sh` (full source below). Usage:
+
+```bash
+# Dry run (masks values)
+DRY_RUN=true bash scripts/upload-secrets.sh .env.local
+
+# Live upload to default repo
+bash scripts/upload-secrets.sh .env.local
+
+# Live upload to specific repo
+REPO=owner/repo bash scripts/upload-secrets.sh .env.local
+```
+
+### `scripts/upload-secrets.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="${1:-.env.local}"
+DRY_RUN="${DRY_RUN:-false}"
+REPO="${REPO:-}"   # e.g. owner/repo; falls back to gh default
+
+REQUIRED_KEYS=(CWS_CLIENT_ID CWS_CLIENT_SECRET CWS_REFRESH_TOKEN CWS_PUBLISHER_ID CWS_EXTENSION_ID)
+
+# Load env file
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "ERROR: env file not found: $ENV_FILE" >&2; exit 1
+fi
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+
+# Validate all keys are present and non-empty
+for key in "${REQUIRED_KEYS[@]}"; do
+  val="${!key:-}"
+  if [[ -z "$val" ]]; then
+    echo "ERROR: missing required secret: $key" >&2; exit 1
+  fi
+done
+
+REPO_FLAG="${REPO:+--repo $REPO}"
+
+for key in "${REQUIRED_KEYS[@]}"; do
+  val="${!key}"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] would set $key=***"
+  else
+    # shellcheck disable=SC2086
+    echo "$val" | gh secret set "$key" $REPO_FLAG
+    echo "Uploaded: $key"
+  fi
+done
+echo "Done."
+```
 
 If user declines `gh`, provide manual secret entry checklist for repository settings.
 
 ## Step 4: Release Workflow Blueprint (Version-Triggered)
 
-Design the CI workflow around this logic:
+### 4.1 Token Exchange
 
-1. Read local manifest version.
-2. Optionally compare with a secondary version file and fail on mismatch.
-3. Exchange refresh token for access token:
-- `POST https://oauth2.googleapis.com/token`
-4. Fetch CWS status:
-- `GET https://chromewebstore.googleapis.com/v2/publishers/<publisherId>/items/<extensionId>:fetchStatus`
-5. Extract current published version from:
-- `publishedItemRevisionStatus.distributionChannels[0].crxVersion`
-6. If local version == published version, skip publish.
-7. If version changed:
-- build package zip
-- upload zip:
-  `POST https://chromewebstore.googleapis.com/upload/v2/publishers/<publisherId>/items/<extensionId>:upload`
-- handle async upload state with polling when needed
-- publish:
-  `POST https://chromewebstore.googleapis.com/v2/publishers/<publisherId>/items/<extensionId>:publish`
+```bash
+ACCESS_TOKEN=$(curl -s -X POST https://oauth2.googleapis.com/token \
+  -d "client_id=${CWS_CLIENT_ID}" \
+  -d "client_secret=${CWS_CLIENT_SECRET}" \
+  -d "refresh_token=${CWS_REFRESH_TOKEN}" \
+  -d "grant_type=refresh_token" \
+  | jq -r '.access_token')
+```
 
-Treat these publish states as successful submission:
-- `PENDING_REVIEW`
-- `PUBLISHED`
-- `PUBLISHED_TO_TESTERS`
-- `STAGED`
+### 4.2 Fetch Published Version
+
+```bash
+STATUS=$(curl -s \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:fetchStatus")
+
+PUBLISHED_VERSION=$(echo "$STATUS" \
+  | jq -r '.publishedItemRevisionStatus.distributionChannels[0].crxVersion // empty')
+```
+
+### 4.3 Version Comparison and Publish
+
+```bash
+LOCAL_VERSION=$(jq -r '.version' "$MANIFEST_PATH")
+
+if [[ "$LOCAL_VERSION" == "$PUBLISHED_VERSION" ]]; then
+  echo "Version unchanged ($LOCAL_VERSION). Skipping publish."
+  exit 0
+fi
+
+echo "Version changed: $PUBLISHED_VERSION → $LOCAL_VERSION. Building and publishing..."
+
+# Build and package
+eval "$BUILD_CMD"
+eval "$ZIP_CMD"   # produces $ZIP_PATH
+
+# Upload
+curl -s -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -H "Content-Type: application/zip" \
+  --data-binary "@${ZIP_PATH}" \
+  "https://chromewebstore.googleapis.com/upload/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:upload"
+
+# Publish
+curl -s -X POST \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:publish"
+```
+
+Treat these states as successful submission: `PENDING_REVIEW`, `PUBLISHED`, `PUBLISHED_TO_TESTERS`, `STAGED`.
 
 ## Step 5: Submission Status Checker Blueprint
 
-Create a script dedicated to "what is the latest submission state?".
+Implement the status checker as `scripts/cws-status.sh` (full source below). Usage:
 
-Required behavior:
-- accepts env values (and optional `--env-file`)
-- optionally accepts `--manifest` for local version comparison
-- supports `--json`
-- calls token endpoint + `fetchStatus`
-- outputs normalized fields:
-  - `itemId`
-  - `localVersion`
-  - `publishedVersion`
-  - `publishedState`
-  - `submittedVersion`
-  - `submittedState`
-  - `upToDate`
-  - `pendingReview`
-- exits non-zero on auth/API/input errors
+```bash
+# Human-readable summary
+bash scripts/cws-status.sh --env-file .env.local --manifest src/manifest.json
 
-Helpful checks to include:
-- flag version mismatch between manifest and package metadata
-- show whether uploaded version is pending review but not yet published
-- print concise human summary when `--json` is not used
+# JSON output (for CI or jq piping)
+bash scripts/cws-status.sh --env-file .env.local --manifest src/manifest.json --json
+```
+
+### `scripts/cws-status.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="${ENV_FILE:-.env.local}"
+MANIFEST="${MANIFEST:-}"
+JSON_OUTPUT="${JSON:-false}"
+
+# Parse flags
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env-file) ENV_FILE="$2"; shift 2 ;;
+    --manifest) MANIFEST="$2"; shift 2 ;;
+    --json)     JSON_OUTPUT=true; shift ;;
+    *) echo "Unknown flag: $1" >&2; exit 1 ;;
+  esac
+done
+
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+
+# Token exchange
+ACCESS_TOKEN=$(curl -s -X POST https://oauth2.googleapis.com/token \
+  -d "client_id=${CWS_CLIENT_ID}" \
+  -d "client_secret=${CWS_CLIENT_SECRET}" \
+  -d "refresh_token=${CWS_REFRESH_TOKEN}" \
+  -d "grant_type=refresh_token" \
+  | jq -r '.access_token')
+
+[[ -z "$ACCESS_TOKEN" || "$ACCESS_TOKEN" == "null" ]] && { echo "ERROR: token exchange failed" >&2; exit 1; }
+
+# Fetch status
+STATUS=$(curl -s \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  "https://chromewebstore.googleapis.com/v2/publishers/${CWS_PUBLISHER_ID}/items/${CWS_EXTENSION_ID}:fetchStatus")
+
+PUBLISHED_VERSION=$(echo "$STATUS" | jq -r '.publishedItemRevisionStatus.distributionChannels[0].crxVersion // empty')
+PUBLISHED_STATE=$(echo  "$STATUS" | jq -r '.publishedItemRevisionStatus.status // empty')
+SUBMITTED_VERSION=$(echo "$STATUS" | jq -r '.pendingItemRevisionStatus.crxVersion // empty')
+SUBMITTED_STATE=$(echo  "$STATUS" | jq -r '.pendingItemRevisionStatus.status // empty')
+LOCAL_VERSION=""
+if [[ -n "$MANIFEST" ]]; then
+  LOCAL_VERSION=$(jq -r '.version' "$MANIFEST")
+fi
+
+UP_TO_DATE="false"
+[[ -n "$LOCAL_VERSION" && "$LOCAL_VERSION" == "$PUBLISHED_VERSION" ]] && UP_TO_DATE="true"
+PENDING_REVIEW="false"
+[[ "$SUBMITTED_STATE" == "PENDING_REVIEW" ]] && PENDING_REVIEW="true"
+
+if [[ "$JSON_OUTPUT" == "true" ]]; then
+  jq -n \
+    --arg itemId        "$CWS_EXTENSION_ID" \
+    --arg localVersion  "$LOCAL_VERSION" \
+    --arg publishedVersion "$PUBLISHED_VERSION" \
+    --arg publishedState   "$PUBLISHED_STATE" \
+    --arg submittedVersion "$SUBMITTED_VERSION" \
+    --arg submittedState   "$SUBMITTED_STATE" \
+    --argjson upToDate     "$UP_TO_DATE" \
+    --argjson pendingReview "$PENDING_REVIEW" \
+    '{itemId:$itemId,localVersion:$localVersion,publishedVersion:$publishedVersion,
+      publishedState:$publishedState,submittedVersion:$submittedVersion,
+      submittedState:$submittedState,upToDate:$upToDate,pendingReview:$pendingReview}'
+else
+  echo "Extension : $CWS_EXTENSION_ID"
+  [[ -n "$LOCAL_VERSION" ]] && echo "Local ver  : $LOCAL_VERSION"
+  echo "Published  : ${PUBLISHED_VERSION} (${PUBLISHED_STATE})"
+  [[ -n "$SUBMITTED_VERSION" ]] && echo "Submitted  : ${SUBMITTED_VERSION} (${SUBMITTED_STATE})"
+  echo "Up-to-date : $UP_TO_DATE  |  Pending review: $PENDING_REVIEW"
+fi
+```
 
 ## Step 6: Guided Verification Flow
 
@@ -221,38 +310,26 @@ Run this with the user:
 1. Confirm status checker runs successfully before release.
 2. Bump extension version (patch) in all version sources.
 3. Push branch and trigger workflow.
-4. Confirm workflow either:
-- skips (if no version change), or
-- uploads and submits publish.
-5. Re-run status checker:
-- expect `PENDING_REVIEW` first in many cases
-- later expect published channel to match local version
+4. Confirm workflow either skips (no version change) or uploads and submits.
+5. Re-run status checker — expect `PENDING_REVIEW` first, then published channel matching local version.
 
-## Troubleshooting Script (What Agent Should Say)
+## Troubleshooting
 
-- `invalid_grant`:
-- likely wrong/expired refresh token, wrong OAuth client, or wrong account
-- `403` from CWS endpoint:
-- account lacks publisher permissions for that extension
-- workflow no-op:
-- local version equals published version by design
-- upload failure:
-- inspect API response and packaged zip structure/manifest validity
-- version mismatch guard failure:
-- align all declared version files before publishing
+| Symptom | Likely cause |
+|---|---|
+| `invalid_grant` | Wrong/expired refresh token, wrong OAuth client, or wrong account |
+| `403` from CWS endpoint | Account lacks publisher permissions for that extension |
+| Workflow no-op | Local version equals published version by design |
+| Upload failure | Inspect API response and packaged zip structure/manifest validity |
+| Version mismatch guard failure | Align all declared version files before publishing |
 
 ## Practical Links (Share During Guidance)
 
-- Chrome Web Store API overview:
-`https://developer.chrome.com/docs/webstore/using-api`
-- Publish endpoint:
-`https://developer.chrome.com/docs/webstore/publish`
-- OAuth Playground:
-`https://developers.google.com/oauthplayground/`
-- API enablement page:
-`https://console.cloud.google.com/apis/library/chromewebstore.googleapis.com`
-- Credentials page:
-`https://console.cloud.google.com/apis/credentials`
+- Chrome Web Store API overview: `https://developer.chrome.com/docs/webstore/using-api`
+- Publish endpoint: `https://developer.chrome.com/docs/webstore/publish`
+- OAuth Playground: `https://developers.google.com/oauthplayground/`
+- API enablement page: `https://console.cloud.google.com/apis/library/chromewebstore.googleapis.com`
+- Credentials page: `https://console.cloud.google.com/apis/credentials`
 
 ## Guardrails
 

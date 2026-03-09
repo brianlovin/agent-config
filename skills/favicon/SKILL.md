@@ -1,6 +1,6 @@
 ---
 name: favicon
-description: Generate a complete set of favicons from a source image and update HTML. Use when setting up favicons for a web project.
+description: Generates a complete set of favicons from a source image, including favicon.ico (16×16, 32×32, 48×48), apple-touch-icon (180×180), PWA manifest icons (192×192, 512×512), favicon-96x96.png, and optionally favicon.svg, then creates or updates site.webmanifest and injects the appropriate link tags into the project's HTML or layout file. Use when setting up or replacing favicons, a site icon, browser icon, or app icon for a web project — including requests involving favicon.ico, apple-touch-icon, PWA icons, or web app manifest icons across Rails, Next.js, static HTML, and other frameworks.
 argument-hint: [path to source image]
 ---
 
@@ -27,40 +27,38 @@ Note whether the source is an SVG file - if so, it will also be copied as `favic
 
 ## Step 2: Detect Project Type and Static Assets Directory
 
-Detect the project type and determine where static assets should be placed. Check in this order:
+The general pattern is: look for a framework config file, then use the corresponding static directory. Check in this order:
 
-| Framework | Detection | Static Assets Directory |
-|-----------|-----------|------------------------|
-| **Rails** | `config/routes.rb` exists | `public/` |
-| **Next.js** | `next.config.*` exists | `public/` |
-| **Gatsby** | `gatsby-config.*` exists | `static/` |
-| **SvelteKit** | `svelte.config.*` exists | `static/` |
-| **Astro** | `astro.config.*` exists | `public/` |
-| **Hugo** | `hugo.toml` or `config.toml` with Hugo markers | `static/` |
-| **Jekyll** | `_config.yml` with Jekyll markers | Root directory (same as `index.html`) |
-| **Vite** | `vite.config.*` exists | `public/` |
-| **Create React App** | `package.json` has `react-scripts` dependency | `public/` |
-| **Vue CLI** | `vue.config.*` exists | `public/` |
-| **Angular** | `angular.json` exists | `src/assets/` |
-| **Eleventy** | `.eleventy.js` or `eleventy.config.*` exists | Check `_site` output or root |
+| Framework | Config File | Static Assets Directory |
+|-----------|-------------|------------------------|
+| **Rails** | `config/routes.rb` | `public/` |
+| **Next.js** | `next.config.*` | `public/` |
+| **Gatsby** | `gatsby-config.*` | `static/` |
+| **SvelteKit** | `svelte.config.*` | `static/` |
+| **Astro** | `astro.config.*` | `public/` |
+| **Hugo** | `hugo.toml` / `config.toml` | `static/` |
+| **Jekyll** | `_config.yml` | Root (same as `index.html`) |
+| **Vite** | `vite.config.*` | `public/` |
+| **Create React App** | `react-scripts` in `package.json` | `public/` |
+| **Vue CLI** | `vue.config.*` | `public/` |
+| **Angular** | `angular.json` | `src/assets/` |
+| **Eleventy** | `.eleventy.js` / `eleventy.config.*` | Check `_site` output or root |
 | **Static HTML** | `index.html` in root | Same directory as `index.html` |
 
 **Important**: If existing favicon files are found (e.g., `favicon.ico`, `apple-touch-icon.png`), use their location as the target directory regardless of framework detection.
 
 Report the detected project type and the static assets directory that will be used.
 
-**When in doubt, ask**: If you are not 100% confident about where static assets should be placed (e.g., ambiguous project structure, multiple potential locations, unfamiliar framework), use `AskUserQuestionTool` to confirm the target directory before proceeding. It's better to ask than to put files in the wrong place.
+**When in doubt, ask**: If you are not 100% confident about where static assets should be placed, use `AskUserQuestionTool` to confirm the target directory before proceeding.
 
 ## Step 3: Determine App Name
 
 Find the app name from these sources (in priority order):
 
-1. **Existing `site.webmanifest`** - Check the detected static assets directory for an existing manifest and extract the `name` field
-2. **`package.json`** - Extract the `name` field if it exists
-3. **Rails `config/application.rb`** - Extract the module name (e.g., `module MyApp` → "MyApp")
-4. **Directory name** - Use the current working directory name as fallback
-
-Convert the name to title case if needed (e.g., "my-app" → "My App").
+1. **Existing `site.webmanifest`** — extract the `name` field
+2. **`package.json`** — extract the `name` field
+3. **Rails `config/application.rb`** — extract the module name (e.g., `module MyApp` → "MyApp")
+4. **Directory name** — use the current working directory name as fallback
 
 ## Step 4: Ensure Static Assets Directory Exists
 
@@ -101,7 +99,6 @@ magick "$1" -resize 512x512 -background none -alpha on [STATIC_DIR]/web-app-mani
 ```
 
 ### favicon.svg (only if source is SVG)
-If the source file has a `.svg` extension, copy it:
 ```bash
 cp "$1" [STATIC_DIR]/favicon.svg
 ```
@@ -134,18 +131,18 @@ Create or update `[STATIC_DIR]/site.webmanifest` with this content (substitute t
 }
 ```
 
-If `site.webmanifest` already exists in the static directory, preserve the existing `theme_color`, `background_color`, and `display` values while updating the `name`, `short_name`, and `icons` array.
+If `site.webmanifest` already exists, preserve the existing `theme_color`, `background_color`, and `display` values while updating `name`, `short_name`, and the `icons` array.
 
 ## Step 7: Update HTML/Layout Files
 
-Based on the detected project type, update the appropriate file. Adjust the `href` paths based on where the static assets directory is relative to the web root:
-- If static files are in `public/` or `static/` and served from root → use `/favicon.ico`
-- If static files are in `src/assets/` → use `/assets/favicon.ico`
-- If static files are in the same directory as HTML → use `./favicon.ico` or just `favicon.ico`
+Adjust `href` paths based on how the static assets directory maps to the web root:
+- `public/` or `static/` served from root → `/favicon.ico`
+- `src/assets/` → `/assets/favicon.ico`
+- Same directory as HTML → `favicon.ico`
 
-### For Rails Projects
+### Standard HTML favicon tags
 
-Edit `app/views/layouts/application.html.erb`. Find the `<head>` section and add/replace favicon-related tags with:
+Used for Rails, Static HTML, Jekyll, Hugo, Eleventy, Gatsby, SvelteKit, and other HTML-based frameworks. Place near the top of `<head>` (after `<meta charset>` and `<meta name="viewport">` if present). Remove any existing `<link rel="icon"`, `<link rel="shortcut icon"`, `<link rel="apple-touch-icon"`, or `<link rel="manifest"` tags first.
 
 ```html
 <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
@@ -156,14 +153,17 @@ Edit `app/views/layouts/application.html.erb`. Find the `<head>` section and add
 <link rel="manifest" href="/site.webmanifest" />
 ```
 
-**Important**:
-- If the source was NOT an SVG, omit the `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />` line
-- Remove any existing `<link rel="icon"`, `<link rel="shortcut icon"`, `<link rel="apple-touch-icon"`, or `<link rel="manifest"` tags before adding the new ones
-- Place these tags near the top of the `<head>` section, after `<meta charset>` and `<meta name="viewport">` if present
+**If the source was NOT an SVG**, omit the `<link rel="icon" type="image/svg+xml" ...>` line.
+
+| Project Type | File to edit |
+|---|---|
+| **Rails** | `app/views/layouts/application.html.erb` |
+| **Static HTML** | Detected `index.html` |
+| **Jekyll / Hugo / Eleventy / Gatsby / SvelteKit** | Theme or layout template containing `<head>` |
 
 ### For Next.js Projects
 
-Edit the detected layout file (`app/layout.tsx` or `src/app/layout.tsx`). Update or add the `metadata` export to include icons configuration:
+Edit the detected layout file (`app/layout.tsx` or `src/app/layout.tsx`). Update or add the `metadata` export:
 
 ```typescript
 export const metadata: Metadata = {
@@ -184,27 +184,11 @@ export const metadata: Metadata = {
 };
 ```
 
-**Important**:
-- If the source was NOT an SVG, omit the `{ url: '/favicon.svg', type: 'image/svg+xml' }` entry from the icon array
-- If metadata export doesn't exist, create it with just the icons-related fields
-- If metadata export exists, merge the icons configuration with existing fields
-
-### For Static HTML Projects
-
-Edit the detected `index.html` file. Add the same HTML as Rails within the `<head>` section.
+**If the source was NOT an SVG**, omit the `{ url: '/favicon.svg', type: 'image/svg+xml' }` entry. If the metadata export doesn't exist, create it with just the icons-related fields; if it exists, merge the icons configuration with existing fields.
 
 ### If No Project Detected
 
-Skip HTML updates and inform the user they need to manually add the following to their HTML `<head>`:
-
-```html
-<link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="shortcut icon" href="/favicon.ico" />
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-<meta name="apple-mobile-web-app-title" content="[APP_NAME]" />
-<link rel="manifest" href="/site.webmanifest" />
-```
+Skip HTML updates and inform the user to manually add the standard HTML favicon tags above to their `<head>`.
 
 ## Step 8: Summary
 

@@ -1,6 +1,6 @@
 ---
 name: bun
-description: Use Bun instead of Node.js, npm, pnpm, or vite. Provides command mappings, Bun-specific APIs, and development patterns.
+description: Use when the user wants to use Bun, migrate from Node.js/npm/pnpm/Vite, or asks about Bun-specific features. Runs scripts with `bun run`, installs packages with `bun install`, bundles code with `bun build`, and replaces Node.js/npm/pnpm/Vite with Bun-native APIs and tooling.
 ---
 
 # Bun Runtime

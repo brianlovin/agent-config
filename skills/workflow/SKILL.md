@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: "Workflow orchestration for complex coding tasks. Use for ANY non-trivial task (3+ steps or architectural decisions) to enforce planning, subagent strategy, self-improvement, verification, elegance, and autonomous bug fixing. Triggers: multi-step implementation, bug fixes, refactoring, architectural changes, or any task requiring structured execution."
+description: "Workflow orchestration for complex coding tasks. Use when a task involves 3+ steps, spans multiple files, or requires architectural decisions — enforcing upfront planning, subtask breakdown, subagent delegation, cross-file verification, and structured bug investigation. Use when: multi-step feature implementation, complex bug fixes requiring investigation across multiple files, large-scale refactoring, architectural changes, or any task needing a validated execution plan before coding begins."
 ---
 
 ## Workflow Orchestration
@@ -11,6 +11,18 @@ description: "Workflow orchestration for complex coding tasks. Use for ANY non-t
 - If something goes sideways, STOP and re-plan immediately — don't keep pushing
 - Use plan mode for verification steps, not just building
 - Write detailed specs upfront to reduce ambiguity
+
+**Example plan mode output** (written to `tasks/todo.md` before coding begins):
+```
+## Task: Add OAuth2 login support
+
+- [ ] Audit existing auth middleware in `src/auth/`
+- [ ] Design token storage schema (DB migration required)
+- [ ] Implement OAuth2 callback handler in `src/routes/auth.ts`
+- [ ] Wire up session persistence and expiry
+- [ ] Write integration tests covering happy path + token refresh
+- [ ] Verify no regressions in existing session-based login
+```
 
 ### 2. Subagent Strategy
 
@@ -25,6 +37,15 @@ description: "Workflow orchestration for complex coding tasks. Use for ANY non-t
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
+
+**Example `tasks/lessons.md` entry:**
+```
+## Lesson: 2024-06-10 — Don't mutate shared config objects
+
+**What happened:** Modified a shared config object in place; broke unrelated tests.
+**Root cause:** Assumed config was local scope; it was imported by reference.
+**Rule:** Always deep-clone config objects before modification. Use `structuredClone()` or spread at the call site.
+```
 
 ### 4. Verification Before Done
 
@@ -55,6 +76,16 @@ description: "Workflow orchestration for complex coding tasks. Use for ANY non-t
 4. **Explain Changes**: High-level summary at each step
 5. **Document Results**: Add review section to `tasks/todo.md`
 6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+**Example completed `tasks/todo.md` review section:**
+```
+## Review
+
+- [x] OAuth2 callback handler implemented and tested
+- [x] Session expiry confirmed via manual smoke test + unit tests
+- [x] No regressions: existing session login tests all green
+- Lesson captured: always validate redirect_uri against allowlist before exchange
+```
 
 ## Core Principles
 

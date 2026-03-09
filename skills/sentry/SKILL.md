@@ -1,11 +1,19 @@
 ---
 name: sentry
-description: Sentry error monitoring and performance tracing patterns for Next.js applications.
+description: Configures and applies Sentry SDK patterns for error monitoring, performance tracing, and structured logging in Next.js applications. Use when working with Sentry setup, error tracking, crash reporting, exception handling, APM, or observability in Next.js — including tasks like "track errors in production", "debug production issues", "monitor app performance", "set up crash reporting", "add performance spans", or "configure the Sentry SDK". Covers SDK initialization across client/server/edge runtimes, captureException usage, custom span creation for UI actions and API calls, consoleLoggingIntegration, and structured logger output.
 ---
 
 # Sentry Integration
 
 Guidelines for using Sentry for error monitoring and performance tracing.
+
+## Setup Workflow
+
+Follow this sequence when initializing Sentry in a Next.js project:
+
+1. **Create config files** — `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
+2. **Add DSN** — set `NEXT_PUBLIC_SENTRY_DSN` in environment variables and call `Sentry.init()`
+3. **Verify** — send a test event with `Sentry.captureMessage("Test")` and confirm it appears in the Sentry dashboard
 
 ## Exception Catching
 
@@ -81,6 +89,15 @@ Sentry.init({
     Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
   ],
 });
+```
+
+### Verification
+
+After initialization, confirm Sentry is capturing events correctly:
+
+```javascript
+// Send a test event and check the Sentry dashboard
+Sentry.captureMessage("Test: Sentry initialized successfully");
 ```
 
 ## Structured Logging

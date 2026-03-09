@@ -1,6 +1,6 @@
 ---
 name: playwriter
-description: Control the user's currently open Chrome tab through the Playwriter CLI (no new browser launch). Use when you need to inspect live UI state, run scripted browser actions, capture console output, or reproduce frontend issues directly in the user's tab.
+description: Control the user's currently open Chrome tab through the Playwriter CLI (no new browser launch). Use when you need to debug, automate, or test in browser — including DOM inspection, clicking elements, taking screenshots, capturing console output, inspecting live UI state, or reproducing frontend issues directly in the user's active tab.
 ---
 
 # Playwriter
@@ -45,8 +45,26 @@ playwriter -s <session> -e "console.log(await accessibilitySnapshot({ page }))"
 ```
 
 3. Execute targeted actions (click/type/hover/fetch/evaluate).
-4. Pull logs and structured state via `page.evaluate`.
-5. Summarize findings with exact IDs, timestamps, and observed state transitions.
+
+4. Validate the action succeeded — check for expected element state or console output before proceeding:
+
+```bash
+playwriter -s <session> -e "console.log(await page.locator('<expected-selector>').isVisible());"
+```
+
+5. If an action may be timing-sensitive, use a wait → verify → retry pattern:
+
+```bash
+playwriter -s <session> -e "
+  await page.waitForTimeout(500);
+  const visible = await page.locator('<expected-selector>').isVisible();
+  console.log('visible:', visible);
+  // Retry or proceed based on result
+"
+```
+
+6. Pull logs and structured state via `page.evaluate`.
+7. Summarize findings with exact IDs, timestamps, and observed state transitions.
 
 ## Useful Commands
 

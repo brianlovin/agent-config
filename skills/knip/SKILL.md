@@ -1,6 +1,6 @@
 ---
 name: knip
-description: Run knip to find and remove unused files, dependencies, and exports. Use for cleaning up dead code and unused dependencies.
+description: Run knip to find and remove unused files, dependencies, and exports. Use when cleaning up dead code, pruning unused dependencies, removing orphaned files, auditing dependencies, or finding unused imports and exports across a project.
 ---
 
 # Knip Code Cleanup
@@ -14,7 +14,7 @@ Run knip to find and remove unused files, dependencies, and exports from this co
    - If it fails or is very slow, check if `knip` is in package.json devDependencies
    - If not installed locally, install with `npm install -D knip` (or pnpm/yarn/bun equivalent based on lockfile present)
 
-2. Knip does NOT remove unused imports/variables inside files — that's a linter's job. Knip finds unused files, dependencies, and exports across the project.
+2. Knip targets unused files, dependencies, and exports — not unused imports/variables inside files (use a linter for that).
 
 ## Workflow
 
@@ -61,15 +61,13 @@ Re-run knip after each batch of fixes. Removing unused files often exposes newly
 
 ## Configuration Best Practices
 
-When reviewing or creating a knip config, follow these rules:
-
-- **Never use `ignore` patterns** — `ignore` hides real issues and should almost never be used. Always prefer specific solutions. Other `ignore*` options (like `ignoreDependencies`, `ignoreExportsUsedInFile`) are fine because they target specific issue types.
-- **Many unused exported types?** Add `ignoreExportsUsedInFile: { interface: true, type: true }` — this handles the common case of types only used in the same file. Prefer this over broader ignore options.
-- **Remove redundant patterns** — Knip already respects `.gitignore`, so ignoring `node_modules`, `dist`, `build`, `.git` is redundant.
-- **Remove entry patterns covered by defaults** — Auto-detected plugins already add standard entry points. Don't duplicate them.
-- **Config files showing as unused** (e.g. `vite.config.ts`) — Enable or disable the corresponding plugin explicitly rather than ignoring the file.
-- **Dependencies matching Node.js builtins** (e.g. `buffer`, `process`) — Add to `ignoreDependencies`.
-- **Unresolved imports from path aliases** — Add `paths` to knip config (uses tsconfig.json semantics).
+- **Never use `ignore` patterns** — hides real issues; always prefer specific solutions. Other `ignore*` options (`ignoreDependencies`, `ignoreExportsUsedInFile`) are fine.
+- **Many unused exported types?** Add `ignoreExportsUsedInFile: { interface: true, type: true }` to handle types used only in the same file.
+- **Remove redundant patterns** — knip already respects `.gitignore`; don't re-ignore `node_modules`, `dist`, `build`, `.git`.
+- **Remove duplicate entry patterns** — auto-detected plugins already add standard entry points.
+- **Config files showing as unused** (e.g. `vite.config.ts`) — enable/disable the corresponding plugin explicitly.
+- **Dependencies matching Node.js builtins** (e.g. `buffer`, `process`) — add to `ignoreDependencies`.
+- **Unresolved path alias imports** — add `paths` to knip config (uses tsconfig.json semantics).
 
 ## Production Mode
 
@@ -84,16 +82,16 @@ This excludes test files, config files, and other non-production entry points. D
 ## Cleanup Confidence Levels
 
 ### Auto-delete (high confidence):
-- Unused exports that are clearly internal (not part of public API)
+- Unused exports clearly internal (not part of public API)
 - Unused type exports
 - Unused dependencies (remove from package.json)
-- Unused files that are clearly orphaned (not entry points, not config files)
+- Clearly orphaned files (not entry points, not config files)
 
 ### Ask first (needs clarification):
 - Files that might be entry points or dynamically imported
-- Exports that might be part of a public API (index.ts, lib exports)
+- Exports that might be part of a public API (`index.ts`, lib exports)
 - Dependencies that might be used via CLI or peer dependencies
-- Anything in paths like `src/index`, `lib/`, or files with "public" or "api" in the name
+- Files in paths like `src/index`, `lib/`, or with "public"/"api" in the name
 
 Use the AskUserQuestion tool to clarify before deleting these.
 
@@ -142,4 +140,4 @@ npx knip --reporter json
 
 - Watch for monorepo setups — may need `--workspace` flag
 - Some frameworks need plugins enabled in config
-- Knip does not handle unused imports/variables inside files — use ESLint or Biome for that
+- Use ESLint or Biome for unused imports/variables inside files

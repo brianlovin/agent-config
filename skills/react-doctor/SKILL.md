@@ -1,6 +1,6 @@
 ---
 name: react-doctor
-description: Diagnose and fix React codebase health issues. Use when reviewing React code, fixing performance problems, auditing security, or improving code quality.
+description: Diagnoses and fixes React codebase health issues by running automated analysis across security, performance, correctness, and architecture dimensions. Use when reviewing React components, hooks, or .jsx/.tsx files; identifying unnecessary re-renders, memory leaks, or component lifecycle issues; auditing useState/useEffect misuse, missing cleanup, or hardcoded secrets; improving bundle size, accessibility, or Next.js server patterns; or generating a 0-100 health score with prioritized, actionable diagnostics.
 version: 1.0.0
 ---
 
